@@ -1,7 +1,3 @@
-bin/
-obj/
-*.user
-.vs/
-.vscode/
-appsettings.Development.json
-appsettings.Local.json
+node_modules/
+.env
+npm-debug.log*

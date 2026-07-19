@@ -1,4 +1,4 @@
-# Reunion Photos
+# Reunion Photos (Node.js)
 
 A small web app so family members can browse photos from a shared OneDrive
 folder and add name tags or stories to each one — permanently linked to that
@@ -11,14 +11,13 @@ exact photo, not just its filename.
   copied or duplicated.
 - **Hosting:** built for Render.
 - **Extensible:** new features are self-contained modules under
-  `Modules/` — see "Adding a new feature" below.
+  `src/modules/` — see "Adding a new feature" below.
 
 ---
 
 ## 1. Set up Airtable
 
-Create a base (call it whatever you like) with these four tables and exact
-field names:
+Create a base with these five tables and exact field names:
 
 **Albums**
 | Field | Type |
@@ -61,84 +60,77 @@ field names:
 | Key | Single line text |
 | Value | Long text |
 
-(`AppConfig` is used internally by the app to persist the OneDrive refresh
-token, which rotates automatically — you don't need to touch this table.)
+(`AppConfig` is used internally to persist the OneDrive refresh token,
+which rotates automatically — you don't need to touch this table.)
 
-Get your Airtable API key from your Airtable account's developer settings,
-and your Base ID from the base's API documentation page (Help → API
-documentation). You'll need both in step 4.
+Get your Airtable API key from your account's developer settings (Personal
+access tokens, with `data.records:read` and `data.records:write` scope on
+this base), and your Base ID from the base's URL or its API documentation
+page (Help → API documentation).
 
 ### Adding family members
 
 For each person, add a row to `FamilyMembers` with their name and `Active`
-checked. For `PinHash`, don't type their PIN directly — run the hashing
-tool included in this repo:
+checked. For `PinHash`, run the included hashing tool rather than typing
+their PIN directly:
 
-```
-cd tools/HashPin
-dotnet run
+```bash
+npm run hash-pin
 ```
 
 It'll ask for the PIN and print a hash. Paste that hash into `PinHash`. The
-plain PIN is never stored anywhere — only you and that family member know
-it, unless you write it down elsewhere.
+plain PIN is never stored anywhere by this tool.
 
 ### Adding albums
 
 For each OneDrive folder you want to show, add a row to `Albums` with
-`Active` checked. You'll fill in `DriveId` and `OneDriveFolderId` in step 3
-below, once you can query the Graph API.
+`Active` checked. You'll fill in `DriveId` and `OneDriveFolderId` in the
+next section.
 
 ---
 
 ## 2. Register an app with Microsoft (for OneDrive access)
 
-Since you're using a work/business account, this app registration happens
-in your organization's Microsoft 365 tenant rather than against a personal
-Microsoft account.
+Since you're using a work/business account, this happens in your
+organization's Microsoft 365 tenant.
 
-1. Go to [entra.microsoft.com](https://entra.microsoft.com) (or
-   portal.azure.com → Microsoft Entra ID) and sign in with your business
-   account.
+1. Go to [entra.microsoft.com](https://entra.microsoft.com) and sign in
+   with your business account.
 2. **App registrations** → **New registration**.
    - Name: `Reunion Photos` (anything works).
    - Supported account types: **Accounts in this organizational directory
-     only (Single tenant)** — this is the right choice unless you
-     specifically need people from other organizations to sign in, which
-     you don't here.
-   - Redirect URI: platform **Web**, value `https://oauth.pstmn.io/v1/callback`
-     if you have Postman installed, or `http://localhost:5000/signin` if
-     you'd rather capture the code manually. Either is only used once,
-     during setup.
-3. After registering, note the **Application (client) ID** and the
-   **Directory (tenant) ID** shown on the overview page.
+     only (Single tenant)**.
+   - Redirect URI: platform **Web**, value
+     `https://oauth.pstmn.io/v1/callback` (Postman's own redirect capture
+     page — only used once, during setup).
+3. Note the **Application (client) ID** and **Directory (tenant) ID** on
+   the overview page.
 4. **Certificates & secrets** → **New client secret** → copy the value
-   immediately (it's only shown once).
+   immediately.
 5. **API permissions** → **Add a permission** → **Microsoft Graph** →
-   **Delegated permissions** → add `Files.Read` and `offline_access`.
-   `Files.Read` and `offline_access` don't require tenant-admin consent in
-   most organizations, but if your account isn't a Global Administrator
-   and you see a warning that admin approval is needed, you (or whoever
-   manages your tenant) can click **Grant admin consent** on this same
-   page — a one-time action.
+   **Delegated permissions** → add `Files.Read` and `offline_access`. If
+   you see an admin-consent warning, click **Grant admin consent** (or ask
+   whoever manages your tenant to).
 
 ### Get your first refresh token
 
-This is a one-time manual step. In a browser, go to (replace `{tenantId}`,
-`{clientId}`, and `{redirectUri}` with your values, URL-encoded):
+One-time manual step. In a browser, go to (filling in your own values,
+URL-encoded):
 
 ```
 https://login.microsoftonline.com/{tenantId}/oauth2/v2.0/authorize
   ?client_id={clientId}
   &response_type=code
-  &redirect_uri={redirectUri}
+  &redirect_uri=https://oauth.pstmn.io/v1/callback
   &response_mode=query
   &scope=Files.Read%20offline_access
 ```
 
-Sign in with your business account, approve the consent screen, and you'll
-be redirected with `?code=...` in the URL. Copy that code, then exchange it
-for tokens:
+Sign in, approve consent, and you'll be redirected to a `postman://...` URL
+containing `?code=...`. Copy that whole code value — it's long, and it
+expires in about 10 minutes, so move to the next step right away.
+
+Exchange it for tokens:
 
 ```bash
 curl -X POST https://login.microsoftonline.com/{tenantId}/oauth2/v2.0/token \
@@ -146,76 +138,80 @@ curl -X POST https://login.microsoftonline.com/{tenantId}/oauth2/v2.0/token \
   -d "client_secret={clientSecret}" \
   -d "grant_type=authorization_code" \
   -d "code={code}" \
-  -d "redirect_uri={redirectUri}" \
+  -d "redirect_uri=https://oauth.pstmn.io/v1/callback" \
   -d "scope=Files.Read offline_access"
 ```
 
-The response includes a `refresh_token` — that's your `Graph:RefreshToken`
-seed value for step 4. After the app's first sync, it'll automatically
-rotate and persist newer tokens into the `AppConfig` Airtable table, so you
-only need to do this once.
+The response includes a `refresh_token` — that's your `GRAPH_REFRESH_TOKEN`
+seed value below. After the app's first sync, it automatically rotates and
+persists newer tokens into the `AppConfig` Airtable table, so you only need
+to do this once.
 
 ### Find your DriveId and folder IDs
 
-With the access token from the response above:
+Using the `access_token` from the response above:
 
 ```bash
-# Get your DriveId
 curl https://graph.microsoft.com/v1.0/me/drive -H "Authorization: Bearer {access_token}"
-
-# List folders at the root to find a folder's id
 curl https://graph.microsoft.com/v1.0/me/drive/root/children -H "Authorization: Bearer {access_token}"
 ```
 
-Put the resulting `id` (drive) and folder `id` values into the matching
-`Albums` row in Airtable.
+The first gives you `DriveId` (the `id` field). The second lists root
+folders — find the one you want and copy its `id` as `OneDriveFolderId`.
+Put both into the matching `Albums` row in Airtable.
+
+**If you're on PowerShell**, avoid pasting long tokens directly into a
+`curl -H "..."` argument — PowerShell can mangle very long quoted strings.
+Store the token in a variable first:
+
+```powershell
+$token = "paste-your-access-token-here"
+curl https://graph.microsoft.com/v1.0/me/drive/root/children -H "Authorization: Bearer $token"
+```
 
 ---
 
 ## 3. Run locally
 
-Requires the [.NET 8 SDK](https://dotnet.microsoft.com/download).
-
-Set your secrets locally rather than editing `appsettings.json` directly
-(keeps them out of source control):
+Requires [Node.js](https://nodejs.org) 18 or newer.
 
 ```bash
-cd src/ReunionPhotos.Web
-dotnet user-secrets init
-dotnet user-secrets set "Airtable:ApiKey" "your-airtable-key"
-dotnet user-secrets set "Airtable:BaseId" "your-base-id"
-dotnet user-secrets set "Graph:ClientId" "your-client-id"
-dotnet user-secrets set "Graph:ClientSecret" "your-client-secret"
-dotnet user-secrets set "Graph:TenantId" "your-tenant-id"
-dotnet user-secrets set "Graph:RefreshToken" "your-refresh-token"
-
-dotnet run
+npm install
+cp .env.example .env
 ```
 
-Then open the URL shown in the console.
+Open `.env` and fill in every value (Airtable key/base id, Graph client
+id/secret/tenant/refresh token, and a `SESSION_SECRET` — generate one with):
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+Then start the app:
+
+```bash
+npm start
+```
+
+Open `http://localhost:3000`. The background sync runs 10 seconds after
+startup, then on the interval set by `GRAPH_SYNC_INTERVAL_MINUTES` — watch
+the terminal for a line like `Synced N photo(s) for album`, then refresh
+the gallery.
 
 ---
 
 ## 4. Deploy to Render
 
 1. Push this repo to GitHub.
-2. In Render, **New** → **Web Service** → connect the repo.
-3. Root directory: `src/ReunionPhotos.Web`
-4. Build command: `dotnet publish -c Release -o out`
-5. Start command: `dotnet out/ReunionPhotos.Web.dll`
-6. Environment variables (Render's dashboard, not appsettings.json) — note
-   ASP.NET Core reads nested config from environment variables using a
-   double underscore:
-
+2. In Render: **New** → **Web Service** → connect the repo.
+3. Environment: **Node**.
+4. Build command: `npm install`
+5. Start command: `npm start`
+6. Environment variables (Render's dashboard) — set every key from
+   `.env.example` with real values, plus:
    | Key | Value |
    |---|---|
-   | `Airtable__ApiKey` | your Airtable API key |
-   | `Airtable__BaseId` | your Airtable base id |
-   | `Graph__ClientId` | your Azure app client id |
-   | `Graph__ClientSecret` | your Azure app client secret |
-   | `Graph__TenantId` | your Azure AD tenant id |
-   | `Graph__RefreshToken` | the refresh token from step 2 |
-   | `ASPNETCORE_ENVIRONMENT` | `Production` |
+   | `NODE_ENV` | `production` |
 
 7. Deploy. Render gives you a public HTTPS URL automatically.
 
@@ -223,30 +219,28 @@ Then open the URL shown in the console.
 
 ## Adding a new feature
 
-Every feature lives in its own folder under `Modules/` and implements
-`IFeatureModule`:
+Every feature lives in its own folder under `src/modules/` and exports a
+`register(app)` function:
 
-```csharp
-public class ReactionsModule : IFeatureModule
-{
-    public string Name => "Reactions";
-
-    public void RegisterServices(IServiceCollection services, IConfiguration configuration)
-    {
-        // register any services this feature needs
-    }
+```javascript
+// src/modules/reactions/index.js
+function register(app) {
+  // register routes, start background jobs, etc.
 }
+
+module.exports = { register };
 ```
 
-Then add one line to `Modules/ModuleRegistry.cs`:
+Then add one line to `src/modules/moduleRegistry.js`:
 
-```csharp
-new ReactionsModule(),
+```javascript
+const reactionsModule = require('./reactions');
+const modules = [oneDriveSyncModule, reactionsModule];
 ```
 
-Nothing else needs to change. Razor Pages for the new feature go in their
-own subfolder under `Pages/`, and any Airtable fields it needs can be added
-to the relevant table without touching existing code.
+Nothing else needs to change. Routes for the new feature go in their own
+file under `src/routes/`, and any Airtable fields it needs can be added to
+the relevant table without touching existing code.
 
 ---
 
@@ -256,8 +250,10 @@ to the relevant table without touching existing code.
   never stores or logs a plain PIN.
 - Login attempts are rate-limited per IP address (5 failures locks that IP
   out for 15 minutes) to slow down PIN guessing.
-- The Airtable API key and OneDrive credentials live only in environment
-  variables / user secrets, never in source control.
+- Session cookies are signed (JWT) and `httpOnly`; they're marked `Secure`
+  automatically in production so browsers only send them over HTTPS.
+- Airtable and OneDrive credentials live only in environment variables /
+  `.env` (which is gitignored), never in source control.
 - Photos are streamed live from OneDrive on each view rather than cached,
   so there's no separate copy of your family's photos sitting on a server
   disk somewhere.
