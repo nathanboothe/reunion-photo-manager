@@ -1,0 +1,56 @@
+@page "{photoId}"
+@model ReunionPhotos.Web.Pages.PhotoModel
+@{
+    ViewData["Title"] = Model.Photo?.FileName ?? "Photo";
+}
+
+@if (Model.Photo is null)
+{
+    <p class="empty-state">That photo couldn't be found.</p>
+}
+else
+{
+    <a class="back-link" href="/">&larr; Back to gallery</a>
+
+    <div class="photo-detail">
+        <img src="/image/@Model.Photo.Id?thumb=false" alt="@Model.Photo.FileName" />
+    </div>
+
+    <section class="entries">
+        <h2>Names &amp; stories</h2>
+
+        @if (Model.Entries.Count == 0)
+        {
+            <p class="empty-state">No one has added anything yet - be the first!</p>
+        }
+        else
+        {
+            <ul class="entry-list">
+                @foreach (var entry in Model.Entries)
+                {
+                    <li class="entry entry-@entry.Type.ToString().ToLowerInvariant()">
+                        <p class="entry-text">@entry.Text</p>
+                        <p class="entry-meta">
+                            <span class="entry-type">@(entry.Type == EntryType.Story ? "Story" : "Name tag")</span>
+                            &middot; @entry.FamilyMemberName
+                            &middot; @entry.CreatedAt.ToLocalTime().ToString("MMM d, yyyy")
+                        </p>
+                    </li>
+                }
+            </ul>
+        }
+
+        <form method="post" class="entry-form">
+            <label for="Type">Add</label>
+            <select id="Type" name="Type">
+                <option value="NameTag">Who's in this photo</option>
+                <option value="Story">A story about this photo</option>
+            </select>
+
+            <label for="Text">Your note</label>
+            <textarea id="Text" name="Text" rows="3" required></textarea>
+
+            <button type="submit">Post</button>
+        </form>
+    </section>
+}

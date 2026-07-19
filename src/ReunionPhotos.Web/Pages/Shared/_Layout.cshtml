@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@ViewData["Title"] - Family Reunion Photos</title>
+    <link rel="stylesheet" href="~/css/site.css" />
+</head>
+<body>
+    <header class="site-header">
+        <a class="brand" href="/">Reunion Photos</a>
+        @if (User.Identity?.IsAuthenticated == true)
+        {
+            <div class="header-right">
+                <span class="signed-in-as">@User.Identity.Name</span>
+                <form method="post" action="/Login?handler=Logout">
+                    <button type="submit" class="link-button">Log out</button>
+                </form>
+            </div>
+        }
+    </header>
+
+    <main class="site-main">
+        @RenderBody()
+    </main>
+
+    <script src="~/js/site.js"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

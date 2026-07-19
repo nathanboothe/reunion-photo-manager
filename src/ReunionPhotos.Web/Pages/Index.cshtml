@@ -1,0 +1,33 @@
+@page
+@model ReunionPhotos.Web.Pages.IndexModel
+@{
+    ViewData["Title"] = "Photos";
+}
+
+@foreach (var album in Model.Albums)
+{
+    <section class="album">
+        <h2>@album.Name</h2>
+
+        @if (Model.PhotosByAlbum.TryGetValue(album.Id, out var photos) && photos.Count > 0)
+        {
+            <div class="photo-grid">
+                @foreach (var photo in photos)
+                {
+                    <a class="photo-thumb" href="/Photo/@photo.Id">
+                        <img src="/image/@photo.Id?thumb=true" alt="@photo.FileName" loading="lazy" />
+                    </a>
+                }
+            </div>
+        }
+        else
+        {
+            <p class="empty-state">No photos synced yet - check back after the next sync.</p>
+        }
+    </section>
+}
+
+@if (Model.Albums.Count == 0)
+{
+    <p class="empty-state">No albums have been set up yet. Add a row to the Albums table in Airtable to get started.</p>
+}
