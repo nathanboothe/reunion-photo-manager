@@ -1,24 +1,19 @@
-{
-  "name": "reunion-photos",
-  "version": "1.0.0",
-  "description": "Family reunion photo gallery with OneDrive sync and PIN login",
-  "main": "server.js",
-  "scripts": {
-    "start": "node server.js",
-    "hash-pin": "node tools/hashPin.js"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "engines": {
-    "node": ">=18"
-  },
-  "dependencies": {
-    "bcryptjs": "^3.0.3",
-    "cookie-parser": "^1.4.7",
-    "dotenv": "^17.4.2",
-    "ejs": "^6.0.1",
-    "express": "^5.2.1",
-    "jsonwebtoken": "^9.0.3"
-  }
-}
+<%- include('partials/header', { title: 'Log in - Whoisit' }) %>
+
+<div class="login-card">
+    <h1>Welcome back</h1>
+    <p class="subtitle">Enter your PIN to see the family photos.</p>
+
+    <% if (error) { %>
+        <p class="error-message"><%= error %></p>
+    <% } %>
+
+    <form method="post" action="/login">
+        <input type="hidden" name="returnUrl" value="<%= returnUrl %>" />
+        <label for="pin">PIN</label>
+        <input type="password" inputmode="numeric" id="pin" name="pin" autocomplete="off" autofocus required />
+        <button type="submit">Log in</button>
+    </form>
+</div>
+
+<%- include('partials/footer') %>
