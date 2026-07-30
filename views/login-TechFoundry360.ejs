@@ -1,0 +1,19 @@
+<%- include('partials/header', { title: 'Log in - Reunion Photos' }) %>
+
+<div class="login-card">
+    <h1>Welcome back</h1>
+    <p class="subtitle">Enter your PIN to see the family photos.</p>
+
+    <% if (error) { %>
+        <p class="error-message"><%= error %></p>
+    <% } %>
+
+    <form method="post" action="/login">
+        <input type="hidden" name="returnUrl" value="<%= returnUrl %>" />
+        <label for="pin">PIN</label>
+        <input type="password" inputmode="numeric" id="pin" name="pin" autocomplete="off" autofocus required />
+        <button type="submit">Log in</button>
+    </form>
+</div>
+
+<%- include('partials/footer') %>

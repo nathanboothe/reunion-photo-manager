@@ -1,0 +1,26 @@
+<%- include('partials/header', { title: 'Photos - Reunion Photos' }) %>
+
+<% albums.forEach(function(album) { %>
+    <section class="album">
+        <h2><%= album.name %></h2>
+
+        <% const photos = photosByAlbum[album.id] || []; %>
+        <% if (photos.length > 0) { %>
+            <div class="photo-grid">
+                <% photos.forEach(function(photo) { %>
+                    <a class="photo-thumb" href="/photo/<%= photo.id %>">
+                        <img src="/image/<%= photo.id %>?thumb=true" alt="<%= photo.fileName %>" loading="lazy" />
+                    </a>
+                <% }) %>
+            </div>
+        <% } else { %>
+            <p class="empty-state">No photos synced yet - check back after the next sync.</p>
+        <% } %>
+    </section>
+<% }) %>
+
+<% if (albums.length === 0) { %>
+    <p class="empty-state">No albums have been set up yet. Add a row to the Albums table in Airtable to get started.</p>
+<% } %>
+
+<%- include('partials/footer') %>

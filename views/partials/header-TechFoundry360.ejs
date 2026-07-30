@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title><%= typeof title !== 'undefined' ? title : 'Reunion Photos' %></title>
+    <link rel="stylesheet" href="/css/site.css" />
+</head>
+<body>
+    <header class="site-header">
+        <a class="brand" href="/">Reunion Photos</a>
+        <% if (user) { %>
+            <div class="header-right">
+                <span class="signed-in-as"><%= user.name %></span>
+                <form method="post" action="/logout">
+                    <button type="submit" class="link-button">Log out</button>
+                </form>
+            </div>
+        <% } %>
+    </header>
+
+    <main class="site-main">

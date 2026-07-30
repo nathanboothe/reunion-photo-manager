@@ -1,0 +1,43 @@
+<%- include('partials/header', { title: (photo ? photo.fileName : 'Photo') + ' - Reunion Photos' }) %>
+
+<a class="back-link" href="/">&larr; Back to gallery</a>
+
+<div class="photo-detail">
+    <img src="/image/<%= photo.id %>?thumb=false" alt="<%= photo.fileName %>" />
+</div>
+
+<section class="entries">
+    <h2>Names &amp; stories</h2>
+
+    <% if (entries.length === 0) { %>
+        <p class="empty-state">No one has added anything yet - be the first!</p>
+    <% } else { %>
+        <ul class="entry-list">
+            <% entries.forEach(function(entry) { %>
+                <li class="entry entry-<%= entry.type.toLowerCase() %>">
+                    <p class="entry-text"><%= entry.text %></p>
+                    <p class="entry-meta">
+                        <span class="entry-type"><%= entry.type === 'Story' ? 'Story' : 'Name tag' %></span>
+                        &middot; <%= entry.familyMemberName %>
+                        &middot; <%= entry.createdAt ? new Date(entry.createdAt).toLocaleDateString() : '' %>
+                    </p>
+                </li>
+            <% }) %>
+        </ul>
+    <% } %>
+
+    <form method="post" action="/photo/<%= photo.id %>" class="entry-form">
+        <label for="type">Add</label>
+        <select id="type" name="type">
+            <option value="NameTag">Who's in this photo</option>
+            <option value="Story">A story about this photo</option>
+        </select>
+
+        <label for="text">Your note</label>
+        <textarea id="text" name="text" rows="3" required></textarea>
+
+        <button type="submit">Post</button>
+    </form>
+</section>
+
+<%- include('partials/footer') %>
